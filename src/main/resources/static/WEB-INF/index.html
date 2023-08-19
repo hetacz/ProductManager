@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Product Updates Demo</title>
+    <script src="/webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
+    <script src="/webjars/stomp-websocket/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+<div id="product-form">
+    <input type="text" id="name" placeholder="Product Name">
+    <input type="number" id="price" placeholder="Product Price">
+    <button onclick="addProduct()">Add Product</button>
+    <ul id="productList"></ul>
+</div>
+
+<script>
+    const socket = new SockJS('/products-websocket');
+    const stompClient = Stomp.over(socket);
+    stompClient.connect({}, function(frame) {
+        console.log('Connected: ' + frame);
+        stompClient.subscribe('/topic/products', function(productOutput) {
+            displayProduct(JSON.parse(productOutput.body));
+        });
+    });
+
+    function addProduct() {
+        const name = document.querySelector('#name').value;
+        const price = document.querySelector('#price').value;
+        const product = {
+            name: name,
+            price: parseFloat(price)
+        };
+        stompClient.send("/app/product/add", {}, JSON.stringify(product));
+    }
+
+    function displayProduct(product) {
+        const productElement = document.createElement('li');
+        productElement.innerHTML = product.name + ': $' + product.price;
+        document.querySelector('#productList').appendChild(productElement);
+    }
+</script>
+</body>
+</html>
