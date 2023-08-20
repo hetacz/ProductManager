@@ -20,6 +20,20 @@ import java.util.List;
 @RequestMapping("/api/categories")
 public class CategoryControler {
 
+    private static final String INVALID_BODY = "Request body is not valid";
+    private static final String CATEGORIES_IDS_DELETED = "Categories with IDs: %s deleted";
+    private static final String CATEGORY_ID_DELETED = "Category with ID: %d deleted";
+    private static final String TOPIC_CATEGORY = "/topic/category/";
+    private static final String CATEGORY_CREATED = "Created category with ID: %d, category: %s";
+    private static final String CATEGORY_ADDED = "Category: {} added: {}";
+    private static final String DELETED_CATEGORY = "Deleted category with ID: %d";
+    private static final String CATEGORY_DELETED = "Category: {} deleted";
+    private static final String UPDATED_CATEGORY = "Updated category with ID: %d, new category: %s";
+    private static final String CATEGORY_UPDATED = "Category: {} updated: {}";
+    private static final String CATEGORY_BY_ID = "Get category by ID: %d, category: %s";
+    private static final String CATEGORY_WITH_PRODUCTS = "Category: {}, with products: {}";
+    private static final String ALL_CATEGORIES = "Get all category %s";
+    private static final String CATEGORIES = "Categories: {}";
     private final CategoryService service;
     private final CategoryRepository repository;
     private final SimpMessagingTemplate template;
@@ -34,51 +48,43 @@ public class CategoryControler {
     @GetMapping("/{id}")
     public ResponseEntity<String> getCategoryById(@PathVariable Long id) {
         Category category = repository.findById(id).orElseThrow();
-        template.convertAndSend("/topic/category/" + id, "Get category by ID: %d, category: %s".formatted(id, category));
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest().build().toUri();
-        return ResponseEntity.ok().location(location).body(category.toString());
+        getCategoryWithProduct(id, category);
+        URI location = getSimpleUri();
+        return getOkResponseBody(location, category);
     }
 
     @GetMapping("/")
     public ResponseEntity<String> getAllCategories() {
         List<Category> categories = repository.findAll(Sort.by(Sort.Direction.ASC, "id"));
-        template.convertAndSend("/topic/category", "Get all category %s".formatted(categories));
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest().build().toUri();
-        return ResponseEntity.ok().location(location).body(categories.toString());
+        getAllCategories(categories);
+        URI location = getSimpleUri();
+        return getOkResponseBody(location, categories);
     }
 
     @PostMapping(value = "/", consumes = "application/json")
-    public ResponseEntity<String> addCategory(@RequestBody @Valid CategoryDto categoryDto, @NotNull BindingResult result) {
+    public ResponseEntity<String> addCategory(@RequestBody @Valid CategoryDto categoryDto,
+            @NotNull BindingResult result) {
         if (result.hasErrors()) {
-            return ResponseEntity.badRequest().body("Request body is not valid");
+            return ResponseEntity.badRequest().body(INVALID_BODY);
         }
         Category category = service.addCategory(categoryDto);
-        template.convertAndSend("/topic/category/" + category.getId(),
-                "Created category with ID: %d, category: %s".formatted(category.getId(), category));
-        log.info("Category: {} added: {}", category.getId(), category);
-        URI location = ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("{id}")
-                .buildAndExpand(category.getId())
-                .toUri();
-        return ResponseEntity.created(location).body(category.toString());
+        categoryCreated(category);
+        URI location = getUriWithId(category);
+        return getCreatedResponseBody(location, category);
     }
 
-    @PostMapping(value = "/bulk", consumes = "application/json")
+    @PostMapping(value = "/batch", consumes = "application/json")
     public ResponseEntity<String> addCategories(@RequestBody @Valid List<CategoryDto> categoryDtos,
             @NotNull BindingResult result) {
         if (result.hasErrors()) {
-            return ResponseEntity.badRequest().body("Request body is not valid");
+            return ResponseEntity.badRequest().body(INVALID_BODY);
         }
         List<Category> categories = service.addCategoriesFromDto(categoryDtos);
-        categories.forEach(category -> {
-            template.convertAndSend("/topic/category/" + category.getId(),
-                    "Created category with ID: %d, category: %s".formatted(category.getId(), category));
-            log.info("Category: {} added: {}", category.getId(), category);
-        });
+        categories.forEach(this::categoryCreated);
         List<String> locations = categories.stream()
-                .map(category -> "/api/category/%d".formatted(category.getId())).toList();
-        return new ResponseEntity<>(locations.toString(), HttpStatus.CREATED);
+                .map(category -> "/api/category/%d".formatted(category.getId()))
+                .toList();
+        return getCreateadResponseBody(locations);
     }
 
     @DeleteMapping("/{id}")
@@ -87,24 +93,20 @@ public class CategoryControler {
             return ResponseEntity.notFound().build();
         }
         service.deleteCategory(id);
-        template.convertAndSend("/topic/category/" + id, "Deleted category with ID: %d".formatted(id));
-        log.info("Category: {} deleted", id);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest().build().toUri();
-        return ResponseEntity.ok().location(location).body("Category with ID: %d deleted".formatted(id));
+        categoryDeleted(id);
+        URI location = getSimpleUri();
+        return getResponseOK(id, location);
     }
 
-    @DeleteMapping("/delete")
+    @DeleteMapping("/batch")
     public ResponseEntity<String> deleteCategories(@RequestBody List<Long> ids) {
         if (repository.findAllByIdIn(ids).isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         List<Long> idsToDelete = repository.findAllByIdIn(ids).stream().map(Category::getId).toList();
         service.deleteCategories(idsToDelete);
-        idsToDelete.forEach(id -> {
-            template.convertAndSend("/topic/category/" + id, "Deleted category with ID: %d".formatted(id));
-            log.info("Category: {} deleted", id);
-        });
-        return ResponseEntity.ok().body("Categories with IDs: %s deleted".formatted(idsToDelete));
+        idsToDelete.forEach(this::categoryDeleted);
+        return getOKResponseBody(idsToDelete);
     }
 
     // no validation of dto as invalid as not updated
@@ -114,10 +116,74 @@ public class CategoryControler {
             return ResponseEntity.notFound().build();
         }
         Category category = service.updateCategory(id, categoryDto);
-        template.convertAndSend("/topic/category/" + id,
-                "Updated category with ID: %d, new category: %s".formatted(id, category));
-        log.info("Category: {} updated: {}", id, category);
-        URI location = ServletUriComponentsBuilder.fromCurrentRequest().build().toUri();
-        return ResponseEntity.ok().location(location).body(category.toString());
+        categoryUpdated(id, category);
+        URI location = getSimpleUri();
+        return getOkResponseBody(location, category);
+    }
+
+    @NotNull
+    private <T> ResponseEntity<String> getOkResponseBody(URI location, @NotNull T t) {
+        return ResponseEntity.ok().location(location).body(t.toString());
+    }
+
+    @NotNull
+    private ResponseEntity<String> getOKResponseBody(List<Long> idsToDelete) {
+        return ResponseEntity.ok().body(CATEGORIES_IDS_DELETED.formatted(idsToDelete));
+    }
+
+    @NotNull
+    private ResponseEntity<String> getResponseOK(Long id, URI location) {
+        return ResponseEntity.ok().location(location).body(CATEGORY_ID_DELETED.formatted(id));
+    }
+
+    @NotNull
+    private ResponseEntity<String> getCreatedResponseBody(URI location, @NotNull Category category) {
+        return ResponseEntity.created(location).body(category.toString());
+    }
+
+    @Contract("_ -> new")
+    @NotNull
+    private ResponseEntity<String> getCreateadResponseBody(@NotNull List<String> locations) {
+        return new ResponseEntity<>(locations.toString(), HttpStatus.CREATED);
+    }
+
+    @NotNull
+    private URI getSimpleUri() {
+        return ServletUriComponentsBuilder.fromCurrentRequest().build().toUri();
+    }
+
+
+    private void getCategoryWithProduct(Long id, Category category) {
+        template.convertAndSend(TOPIC_CATEGORY + id,
+                CATEGORY_BY_ID.formatted(id, category));
+        log.info(CATEGORY_WITH_PRODUCTS, category, category.getProducts().toString());
+    }
+
+    private void getAllCategories(List<Category> categories) {
+        template.convertAndSend(TOPIC_CATEGORY, ALL_CATEGORIES.formatted(categories));
+        log.info(CATEGORIES, categories);
+        categories.forEach(category -> log.debug(CATEGORY_WITH_PRODUCTS, category.getProducts(),
+                category.getProducts().toString()));
+    }
+
+    @NotNull
+    private URI getUriWithId(@NotNull Category category) {
+        return ServletUriComponentsBuilder.fromCurrentRequest().path("{id}").buildAndExpand(category.getId()).toUri();
+    }
+
+    private void categoryCreated(@NotNull Category category) {
+        template.convertAndSend(TOPIC_CATEGORY + category.getId(),
+                CATEGORY_CREATED.formatted(category.getId(), category));
+        log.info(CATEGORY_ADDED, category.getId(), category);
+    }
+
+    private void categoryDeleted(Long id) {
+        template.convertAndSend(TOPIC_CATEGORY + id, DELETED_CATEGORY.formatted(id));
+        log.info(CATEGORY_DELETED, id);
+    }
+
+    private void categoryUpdated(Long id, Category category) {
+        template.convertAndSend(TOPIC_CATEGORY + id, UPDATED_CATEGORY.formatted(id, category));
+        log.info(CATEGORY_UPDATED, id, category);
     }
 }

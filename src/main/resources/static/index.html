@@ -8,7 +8,6 @@
 <body>
 <h1>Subscribe to Updates</h1>
 
-<!-- Form for Product ID -->
 <form id="product-subscription-form">
     <h2>Subscribe to Product Updates</h2>
     <label for="productId">Product ID:</label>
@@ -16,7 +15,6 @@
     <input type="button" value="Subscribe to Product" onclick="subscribeToProduct()">
 </form>
 
-<!-- Form for Category ID -->
 <form id="category-subscription-form">
     <h2>Subscribe to Category Updates</h2>
     <label for="categoryId">Category ID:</label>
@@ -26,27 +24,6 @@
 
 <div id="updates"></div>
 
-<script>
-    const socket = new SockJS('/ws');
-    const stompClient = Stomp.over(socket);
-
-    stompClient.connect({}, function(frame) {
-        console.log('Connected: ' + frame);
-    });
-
-    function subscribeToProduct() {
-        const productId = document.querySelector('#productId').value;
-        stompClient.subscribe('/topic/product/' + productId, function(message) {
-            document.querySelector("#updates").innerHTML += '<p>Product Update: ' + message.body + '</p>';
-        });
-    }
-
-    function subscribeToCategory() {
-        const categoryId = document.querySelector('#categoryId').value;
-        stompClient.subscribe('/topic/category/' + categoryId, function(message) {
-            document.querySelector("#updates").innerHTML += '<p>Category Update: ' + message.body + '</p>';
-        });
-    }
-</script>
+<script src="script.js"></script>
 </body>
 </html>

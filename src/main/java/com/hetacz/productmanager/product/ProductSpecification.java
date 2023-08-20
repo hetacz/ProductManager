@@ -46,4 +46,5 @@ public class ProductSpecification {
     public Specification<Product> wasModifiedAfter(LocalDateTime date) {
         return (root, query, builder) -> builder.greaterThanOrEqualTo(root.get("modified"), date);
     }
+
 }

@@ -9,6 +9,9 @@ import org.springframework.stereotype.Controller;
 @Controller
 public class WebSocketController {
 
+    private static final String TOPIC = "/topic/";
+    private static final String PRODUCT = "product/";
+    private static final String CATEGORY = "category/";
     private final SimpMessagingTemplate template;
 
     @Contract(pure = true)
@@ -17,12 +20,16 @@ public class WebSocketController {
     }
 
     @MessageMapping("/product/{id}")
-    public void sendProductUpdate(String message, @DestinationVariable String id) {
-        template.convertAndSend("/topic/product/" + id, message);
+    public void sendProductUpdate(@DestinationVariable String id) {
+        sendUpdate(TOPIC + PRODUCT + "{id}", id);
     }
 
     @MessageMapping("/category/{id}")
-    public void sendCategoryUpdate(String message, @DestinationVariable String id) {
-        template.convertAndSend("/topic/category/" + id, message);
+    public void sendCategoryUpdate(@DestinationVariable String id) {
+        sendUpdate(TOPIC + CATEGORY + "{id}", id);
+    }
+
+    private void sendUpdate(String message, String id) {
+        template.convertAndSend(message, id);
     }
 }
