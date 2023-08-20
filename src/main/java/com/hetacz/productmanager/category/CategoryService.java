@@ -113,15 +113,15 @@ public class CategoryService {
     }
     
     private void deleteCategory(Long id, @NotNull Category category) {
-        entityManager.createNativeQuery("DELETE FROM product_categories WHERE category_id = :categoryId")
-                .setParameter("categoryId", id)
-                .executeUpdate();
         Iterable<Product> productsToUpdate = new HashSet<>(category.getProducts());
         productsToUpdate.forEach(product -> {
             product.deleteCategory(category);
             productService.addOtherCategoryIfNotExists(product);
         });
         productRepository.saveAll(productsToUpdate);
+        entityManager.createNativeQuery("DELETE FROM product_categories WHERE category_id = :categoryId")
+                .setParameter("categoryId", id)
+                .executeUpdate();
         categoryRepository.deleteById(id);
     }
 }

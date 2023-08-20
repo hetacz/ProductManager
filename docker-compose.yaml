@@ -1,0 +1,30 @@
+version: '3.7'
+services:
+  myapp:
+    image: hetacz/productmanager:0.0.1
+    ports:
+      - '8080:8080'
+    networks:
+      - mynet
+    depends_on:
+      - mysqldb
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysqldb:3306/Products
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: qwe123
+#      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+
+  mysqldb:
+    image: mysql:8-oracle
+    environment:
+      MYSQL_ROOT_PASSWORD: qwe123
+      MYSQL_DATABASE: Products
+      MYSQL_USER: user
+      MYSQL_PASSWORD: qwe123
+    ports:
+      - '3306:3306'
+    networks:
+      - mynet
+
+networks:
+  mynet:
