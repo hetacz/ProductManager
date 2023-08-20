@@ -60,6 +60,23 @@ public class Product implements Serializable, Comparable<Product> {
         this.categories.addAll(Arrays.asList(category));
     }
 
+    public Product(String name, String description, Long price, List<Category> categories) {
+        super();
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.categories.addAll(categories);
+    }
+
+    public Product(Long id, String name, String description, Long price, List<Category> categories) {
+        super();
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.price = price;
+        this.categories.addAll(categories);
+    }
+
     public Product(String name, String description, Long price) {
         super();
         this.name = name;
@@ -96,7 +113,7 @@ public class Product implements Serializable, Comparable<Product> {
         updateModified();
     }
 
-    public void addCategories(Collection<Category> categories) {
+    public void addCategories(List<Category> categories) {
         this.categories.addAll(categories);
         categories.forEach(category -> category.addProduct(this));
         updateModified();
@@ -108,7 +125,7 @@ public class Product implements Serializable, Comparable<Product> {
         updateModified();
     }
 
-    public void deleteCategories(Collection<Category> categories) {
+    public void deleteCategories(List<Category> categories) {
         this.categories.removeAll(categories);
         categories.forEach(category -> category.getProducts().remove(this));
         updateModified();

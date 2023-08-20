@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Product Subscription</title>
+    <script src="webjars/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="webjars/stomp-websocket/2.3.4/stomp.min.js"></script>
+</head>
+<body>
+<h1>Subscribe to Updates</h1>
+
+<form id="product-subscription-form">
+    <h2>Subscribe to Product Updates</h2>
+    <label for="productId">Product ID:</label>
+    <input type="text" id="productId" name="productId">
+    <input type="button" value="Subscribe to Product" onclick="subscribeToProduct()">
+</form>
+
+<form id="category-subscription-form">
+    <h2>Subscribe to Category Updates</h2>
+    <label for="categoryId">Category ID:</label>
+    <input type="text" id="categoryId" name="categoryId">
+    <input type="button" value="Subscribe to Category" onclick="subscribeToCategory()">
+</form>
+
+<div id="updates"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
