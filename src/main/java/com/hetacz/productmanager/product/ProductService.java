@@ -14,18 +14,16 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
 public class ProductService {
+    // todo adding when no categories need to be added from context.
 
     private static final String OTHER = "Other";
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-//    @Autowired
-//    private SimpMessagingTemplate simpleMessagingTemplate;
 
     @Contract(pure = true)
     public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository) {
@@ -86,6 +84,29 @@ public class ProductService {
     }
 
     @Transactional
+    public Product addProduct(@NotNull ProductDto productDto) {
+        List<Category> categories = productDto.categories()
+                .stream()
+                .map(categoryName -> categoryRepository.findByName(categoryName)
+                        .orElse(new Category(categoryName)))
+                .toList();
+        categoryRepository.saveAllAndFlush(categories);
+        Product product = new Product(productDto.name(), productDto.description(), productDto.price(), categories);
+        productRepository.saveAndFlush(product);
+        addOtherCategoryIfNotExists(product);
+        addProductToCategories(product);
+        return productRepository.saveAndFlush(product);
+    }
+
+    @Transactional
+    public List<Product> addProductsFromDto(@NotNull List<ProductDto> productDtos) {
+        List<Product> products = productDtos.stream()
+                .map(this::addProduct)
+                .toList();
+        return productRepository.saveAllAndFlush(products);
+    }
+
+    @Transactional
     public List<Product> addProducts(@NotNull List<Product> products) {
         products.forEach(this::addOtherCategoryIfNotExists);
         return productRepository.saveAllAndFlush(products);
@@ -101,19 +122,25 @@ public class ProductService {
     }
 
     @Transactional
-    public Product updateProduct(Long id, String name, String description, Long price, Set<Category> categories) {
+    public Product updateProduct(Long id, ProductDto productDto) {
         return productRepository.findById(id).map(product -> {
-            if (name != null) {
-                product.setName(name);
+            if (productDto.name() != null) {
+                product.setName(productDto.name());
             }
-            if (description != null) {
-                product.setDescription(description);
+            if (productDto.description() != null) {
+                product.setDescription(productDto.description());
             }
-            if (price != null) {
-                product.setPrice(price);
+            if (productDto.price() != null) {
+                product.setPrice(productDto.price());
             }
-            if (categories != null) {
+            if (productDto.categories() != null && !productDto.categories().isEmpty()) {
                 removeOtherCategoryIfPresent(product);
+                List<Category> categories = productDto.categories()
+                        .stream()
+                        .map(categoryName -> categoryRepository.findByName(categoryName)
+                                .orElse(new Category(categoryName)))
+                        .toList();
+                categoryRepository.saveAllAndFlush(categories);
                 product.addCategories(categories);
             }
             addOtherCategoryIfNotExists(product);
@@ -124,9 +151,24 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(Long id) {
-        Product productToDelete = productRepository.findById(id).orElseThrow();
-        removeProductFromCategories(productToDelete);
-        productRepository.deleteById(id);
+        productRepository.findById(id).ifPresentOrElse(product -> {
+            removeProductFromCategories(product);
+            productRepository.deleteById(id);
+        }, () -> {
+            throw new IllegalArgumentException("Product with id: %d not found.".formatted(id));
+        });
+    }
+
+    @Transactional
+    public void deleteProducts(List<Long> ids) {
+        List<Product> products = productRepository.findAllByIdIn(ids);
+        if (products.isEmpty()) {
+            throw new IllegalArgumentException("No products with ids: %s found.".formatted(ids));
+        }
+        products.forEach(product -> {
+            removeProductFromCategories(product);
+            productRepository.deleteById(product.getId());
+        });
     }
 
     public void addProductToCategories(@NotNull Product product) {
@@ -156,19 +198,20 @@ public class ProductService {
             product.getCategories().clear();
             Category other = categoryRepository.findByName(OTHER).orElseThrow();
             other.getProducts().remove(product);
-            productRepository.save(product);
-            categoryRepository.save(other);
-            productRepository.flush();
-            categoryRepository.flush();
+            saveAndFlushProductAndCategory(product, other);
         }
+    }
+
+    private void saveAndFlushProductAndCategory(@NotNull Product product, Category other) {
+        productRepository.save(product);
+        categoryRepository.save(other);
+        productRepository.flush();
+        categoryRepository.flush();
     }
 
     public void addOtherCategory(Category other, @NotNull Product product) {
         product.addCategory(other);
         other.addProduct(product);
-        productRepository.save(product);
-        categoryRepository.save(other);
-        productRepository.flush();
-        categoryRepository.flush();
+        saveAndFlushProductAndCategory(product, other);
     }
 }

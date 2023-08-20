@@ -1,8 +1,9 @@
 package com.hetacz.productmanager;
 
 import com.hetacz.productmanager.category.Category;
-import com.hetacz.productmanager.category.CategoryRepository;
 import com.hetacz.productmanager.product.Product;
+import com.hetacz.productmanager.product.ProductDto;
+import com.hetacz.productmanager.category.CategoryRepository;
 import com.hetacz.productmanager.product.ProductRepository;
 import com.hetacz.productmanager.product.ProductService;
 import jakarta.transaction.Transactional;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.test.annotation.DirtiesContext;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
@@ -25,6 +27,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(classes = ProductmanagerApplication.class)
 class ProductServiceTest {
 
+    private static final String GROCERY = "Grocery";
+    private static final String YUMMY_THINGS = "Yummy Things";
+    private static final String BREAD_2 = "Bread2";
+    private static final String YUMMY_BREAD = "Yummy bread";
+    private static final String TEST = "test";
     @Autowired
     private CategoryRepository categoryRepository;
     @Autowired
@@ -41,12 +48,34 @@ class ProductServiceTest {
     @DirtiesContext
     @Transactional
     void addProduct() {
-        Product product = new Product("test", "test", 100L);
+        Product product = new Product(TEST, TEST, 100L);
         Product savedProduct = productService.addProduct(product);
         Optional<Product> foundProduct = productRepository.findById(savedProduct.getId());
         assertTrue(foundProduct.isPresent());
         assertEquals("Other", foundProduct.orElseThrow().getCategories().first().getName());
         log.info("Product added: {}", foundProduct.orElseThrow());
+    }
+
+    @Test
+    @DirtiesContext
+    @Transactional
+    void addProductByDtoNoCategory() {
+        productService.addProduct(ProductDto.of(TEST, TEST, 100L, List.of()));
+        Optional<Product> foundProduct = productRepository.findByName(TEST);
+        assertTrue(foundProduct.isPresent());
+        assertEquals("Other", foundProduct.orElseThrow().getCategories().first().getName());
+    }
+
+    @Test
+    @DirtiesContext
+    @Transactional
+    void addProductByDtoWithCategories() {
+        productService.addProduct(ProductDto.of(TEST, TEST, 100L, List.of(GROCERY, YUMMY_THINGS)));
+        Optional<Product> foundProduct = productRepository.findByName(TEST);
+        assertTrue(foundProduct.isPresent());
+        assertEquals(2, foundProduct.orElseThrow().getCategories().size());
+        assertTrue(categoryRepository.findByName(GROCERY).orElseThrow().getProducts().contains(foundProduct.orElseThrow()));
+        assertTrue(categoryRepository.findByName(YUMMY_THINGS).orElseThrow().getProducts().contains(foundProduct.orElseThrow()));
     }
 
     @Test
@@ -58,7 +87,7 @@ class ProductServiceTest {
     @Test
     void searchForProductAndSort() {
         assertEquals(4,
-                productService.findBySpecification("e", "a", 1000L, null, null, null, Set.of("A", "Grocery", "Electronics"),
+                productService.findBySpecification("e", "a", 1000L, null, null, null, Set.of("A", GROCERY, "Electronics"),
                         Sort.by("price").descending()).size());
     }
 
@@ -66,19 +95,17 @@ class ProductServiceTest {
     @DirtiesContext
     @Transactional
     void updateProduct() {
-        Category category1 = categoryRepository.findByName("Grocery").orElse(new Category("Grocery"));
-        categoryRepository.saveAndFlush(category1);
-        Category category2 = categoryRepository.findByName("Yummy Things").orElse(new Category("Yummy Things"));
-        categoryRepository.saveAndFlush(category2);
-        productService.updateProduct(10005L, "Bread2", "Yummy bread", 200L, Set.of(category1, category2));
+        productService.updateProduct(10005L, ProductDto.of(BREAD_2, YUMMY_BREAD, 200L, List.of(GROCERY, YUMMY_THINGS)));
         Product product = productRepository.findById(10005L).orElseThrow();
         assertEquals(2, product.getCategories().size());
-        assertEquals("Bread2", product.getName());
-        assertEquals("Yummy bread", product.getDescription());
+        assertEquals(BREAD_2, product.getName());
+        assertEquals(YUMMY_BREAD, product.getDescription());
         assertEquals(200L, product.getPrice());
         assertTrue(product.getModified().isBefore(LocalDateTime.now()));
-        assertTrue(category1.getProducts().contains(product));
-        assertTrue(category2.getProducts().contains(product));
+        assertTrue(categoryRepository.findByName(GROCERY).isPresent());
+        assertTrue(categoryRepository.findByName(GROCERY).orElseThrow().getProducts().contains(product));
+        assertTrue(categoryRepository.findByName(YUMMY_THINGS).isPresent());
+        assertTrue(categoryRepository.findByName(YUMMY_THINGS).orElseThrow().getProducts().contains(product));
     }
 
     @Test
