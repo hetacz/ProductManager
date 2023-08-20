@@ -9,7 +9,7 @@ It also allows for WebSocket subscription to some events.
 
 ## 0. Installation
 
-Type `docker-compose up` in the root directory of the project.\ 
+Type `docker-compose up` in the root directory of the project.\
 This will start a MySQL database and a Spring Boot application.\
 Go to `localhost:8080` to subscribe via STOMP to events from the application.\
 Database called 'Products' is exposed on port `3306` with username `root` and password `qwe123`.
@@ -32,7 +32,7 @@ The application will send a message to the client when a product, or a category 
 
 MySQL database is used to store the data.\
 `Products` database is exposed on port `3306` with username `root` and password `qwe123`.\
-It contains `Product`. `Category` and `Product_Categories` tables.\ 
+It contains `Product`, `Category` and `Product_Categories` tables.
 
 ### 1.4. Endpoints
 
@@ -42,8 +42,7 @@ Swagger documentation is available at `localhost:8080/swagger-ui.html`.
 
 ### 1.5. Tests
 
-Unit tests use a different database, so they will work the app state no matter.\
-They use different profile and 
+Unit tests use a different profile and in memory database.
 
 ## 2. Additional information
 
