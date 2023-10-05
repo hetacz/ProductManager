@@ -11,12 +11,16 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
 public class ProductService {
+
     // todo adding when no categories need to be added from context.
     private static final String OTHER = "Other";
     private static final String NOT_FOUND = "Product with id: %d not found.";
@@ -49,8 +53,11 @@ public class ProductService {
     public List<Product> findBySpecification(String name, String description, Long min, Long max,
             LocalDateTime createdBefore, LocalDateTime createdAfter, Collection<String> categoryNames, Sort sort) {
         Specification<Product> specification = Stream.of(
-                        categoryNames == null || categoryNames.isEmpty() ? null : Specification.anyOf(
-                                categoryNames.stream().map(ProductSpecification::hasCategoryName).collect(Collectors.toSet())),
+                        categoryNames == null || categoryNames.isEmpty()
+                                ? null
+                                : Specification.anyOf(categoryNames.stream()
+                                        .map(ProductSpecification::hasCategoryName)
+                                        .collect(Collectors.toSet())),
                         nullCheck(ProductSpecification.hasNameLike(name), name),
                         nullCheck(ProductSpecification.hasDescriptionLike(description), description),
                         nullCheck(ProductSpecification.hasPriceLessOrEqualThan(max), max),
@@ -142,12 +149,11 @@ public class ProductService {
         });
     }
 
-    public void addProductToCategories(@NotNull Product product) {
-        Collection<Category> categories = product.getCategories()
-                .stream()
-                .peek(category -> category.addProduct(product))
-                .collect(Collectors.toSet());
-        categoryRepository.saveAll(categories);
+    public void clearCategoriesOfProduct(Long id) {
+        Product product = productRepository.findById(id).orElseThrow();
+        product.clearCategories();
+        addOtherCategoryIfNotExists(product);
+        productRepository.save(product);
     }
 
     public void addOtherCategoryIfNotExists(@NotNull Product product) {
@@ -158,7 +164,15 @@ public class ProductService {
         }
     }
 
-    public void addOtherCategory(Category other, @NotNull Product product) {
+    private void addProductToCategories(@NotNull Product product) {
+        Collection<Category> categories = product.getCategories()
+                .stream()
+                .peek(category -> category.addProduct(product))
+                .collect(Collectors.toSet());
+        categoryRepository.saveAll(categories);
+    }
+
+    private void addOtherCategory(Category other, @NotNull Product product) {
         product.addCategory(other);
         other.addProduct(product);
         saveAndFlushProductAndCategory(product, other);

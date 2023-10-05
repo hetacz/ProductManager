@@ -17,6 +17,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -55,8 +56,7 @@ public class ProductController {
         Product product = repository.findById(id).orElseThrow();
         getProduct(id, product);
         log.info(PRODUCT, product);
-        URI location = getSimpleUri();
-        return getSimpleBodyResponse(location, product);
+        return ResponseEntity.ok().location(getSimpleUri()).body(product.toFullString());
     }
 
     @GetMapping("/")
@@ -66,18 +66,20 @@ public class ProductController {
     }
 
     @GetMapping("/specific")
-    public ResponseEntity<String> getAllProductsByCategory(@RequestParam(required = false) String name,
+    public ResponseEntity<String> getAllProductsByCategory(
+            @RequestParam(required = false) String name,
             @RequestParam(required = false) String description, @RequestParam(required = false) Long min,
             @RequestParam(required = false) Long max, @RequestParam(required = false) LocalDateTime before,
             @RequestParam(required = false) LocalDateTime after,
             @RequestParam(required = false) List<String> categories, @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) SortDir sortDir) {
+            @RequestParam(required = false) SortDir sortDir
+    ) {
         Sort sort = createSort(sortBy, sortDir);
         boolean allNull = Stream.of(name, description, min, max, before, after, categories)
                 .allMatch(Objects::isNull);
-        Supplier<List<Product>> fetcher = allNull
-                ? () -> repository.findAll(sort)
-                : () -> service.findBySpecification(name, description, min, max, before, after, categories, sort);
+        Supplier<List<Product>> fetcher = () -> allNull
+                ? repository.findAll(sort)
+                : service.findBySpecification(name, description, min, max, before, after, categories, sort);
         return getResponseEntity(fetcher.get());
     }
 
@@ -125,7 +127,7 @@ public class ProductController {
         List<Long> idsToDelete = repository.findAllByIdIn(ids).stream().map(Product::getId).toList();
         service.deleteProducts(idsToDelete);
         idsToDelete.forEach(this::productDeleted);
-        return getOKResponseWIthBody(idsToDelete);
+        return getOKResponseWithBody(idsToDelete);
     }
 
     // no validation of dto as invalid as not updated
@@ -138,6 +140,17 @@ public class ProductController {
         updatedProduct(id, product);
         URI location = getSimpleUri();
         return getSimpleBodyResponse(location, product);
+    }
+
+    @PatchMapping("/{id}/clear-categories")
+    public ResponseEntity<String> deleteProductsCategories(@PathVariable Long id) {
+        Optional<Product> product = repository.findById(id);
+        if (product.isEmpty()) {
+            return responseNotFound();
+        }
+        service.clearCategoriesOfProduct(id);
+        updatedProduct(id, product.get());
+        return ResponseEntity.ok().location(getSimpleUri()).body(product.get().toFullString());
     }
 
     private @NotNull Sort createSort(String sortBy, SortDir sortDir) {
@@ -172,7 +185,7 @@ public class ProductController {
     }
 
     @NotNull
-    private ResponseEntity<String> getOKResponseWIthBody(List<Long> idsToDelete) {
+    private ResponseEntity<String> getOKResponseWithBody(List<Long> idsToDelete) {
         return ResponseEntity.ok().body(PRODUCTS_IDS_DELETED.formatted(idsToDelete));
     }
 
