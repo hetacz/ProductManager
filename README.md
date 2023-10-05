@@ -4,7 +4,6 @@
 (https://github.com/hetacz/[![CI](https://github.com/hetacz/HowToSelenium/actions/workflows/gradle.yml/badge.svg)]
 (https://github.com/hetacz/HowToSelenium/actions/workflows/gradle.yml)/actions/workflows/workflow.yml)
 
-
 This is a sample application that demonstrates the use of Spring Boot to manage a simple MySQL database of products.\
 It also allows for WebSocket subscription to some events.
 
