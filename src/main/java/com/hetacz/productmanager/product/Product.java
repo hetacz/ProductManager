@@ -13,7 +13,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 @Entity
 @Getter
@@ -43,53 +46,35 @@ public class Product implements Serializable, Comparable<Product> {
     @ToString.Include(rank = -2)
     private LocalDateTime modified = LocalDateTime.now();
 
-    public Product(String name, String description, Long price, Category... category) {
-        super();
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.categories.addAll(Arrays.asList(category));
-    }
-
-    public Product(Long id, String name, String description, Long price, Category... category) {
-        super();
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.categories.addAll(Arrays.asList(category));
-    }
-
-    public Product(String name, String description, Long price, List<Category> categories) {
-        super();
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.categories.addAll(categories);
-    }
-
-    public Product(Long id, String name, String description, Long price, List<Category> categories) {
-        super();
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.price = price;
-        this.categories.addAll(categories);
-    }
-
     public Product(String name, String description, Long price) {
-        super();
         this.name = name;
         this.description = description;
         this.price = price;
     }
 
     public Product(Long id, String name, String description, Long price) {
-        super();
+        this(name, description, price);
         this.id = id;
-        this.name = name;
-        this.description = description;
-        this.price = price;
+    }
+
+    public Product(String name, String description, Long price, Category... category) {
+        this(name, description, price);
+        this.categories.addAll(Arrays.asList(category));
+    }
+
+    public Product(Long id, String name, String description, Long price, Category... category) {
+        this(id, name, description, price);
+        this.categories.addAll(Arrays.asList(category));
+    }
+
+    public Product(String name, String description, Long price, List<Category> categories) {
+        this(name, description, price);
+        this.categories.addAll(categories);
+    }
+
+    public Product(Long id, String name, String description, Long price, List<Category> categories) {
+        this(id, name, description, price);
+        this.categories.addAll(categories);
     }
 
     public void setName(String name) {
@@ -125,13 +110,15 @@ public class Product implements Serializable, Comparable<Product> {
         updateModified();
     }
 
-    public void deleteCategories(List<Category> categories) {
-        this.categories.removeAll(categories);
+    @Deprecated(forRemoval = true)
+    public void deleteCategories(@NotNull List<Category> categories) {
+        categories.forEach(this.categories::remove);
         categories.forEach(category -> category.getProducts().remove(this));
         updateModified();
     }
 
     public void clearCategories() {
+        this.categories.forEach(category -> category.getProducts().remove(this));
         this.categories.clear();
         updateModified();
     }
@@ -142,7 +129,12 @@ public class Product implements Serializable, Comparable<Product> {
 
     @Override
     public int compareTo(@NotNull Product o) {
-        return this.name.compareTo(o.name);
+        return name.compareTo(o.name);
+    }
+
+    public String toFullString() {
+        return "Product{id=%d, name=%s, description=%s, price=%d, categories=%s, created=%s, modified=%s}"
+                .formatted(id, name, description, price, categories.toString(), created, modified);
     }
 
     private void updateModified() {

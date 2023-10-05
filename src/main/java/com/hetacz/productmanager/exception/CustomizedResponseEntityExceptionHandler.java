@@ -31,7 +31,8 @@ public class CustomizedResponseEntityExceptionHandler extends ResponseEntityExce
     }
 
     @Contract("_, _, _ -> new")
-    private @NotNull ResponseEntity<ErrorDetails> getResponseEntity(@NotNull Exception ex, @NotNull WebRequest request, HttpStatus status) {
+    private @NotNull ResponseEntity<ErrorDetails> getResponseEntity(@NotNull Exception ex, @NotNull WebRequest request,
+            HttpStatus status) {
         return new ResponseEntity<>(new ErrorDetails(
                 LocalDateTime.now(),
                 ex.getMessage(),

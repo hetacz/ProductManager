@@ -25,6 +25,7 @@ public class CategoryService {
     private final ProductService productService;
     @PersistenceContext
     private EntityManager entityManager;
+
     @Contract(pure = true)
     public CategoryService(CategoryRepository categoryRepository, ProductRepository productRepository,
             ProductService productService) {
@@ -104,14 +105,14 @@ public class CategoryService {
         }
         categories.forEach(category -> deleteCategory(category.getId(), category));
     }
-    
+
     private Category updateByIdAndName(Long id, String name) {
         return categoryRepository.findById(id).map(category -> {
             category.setName(name);
             return categoryRepository.saveAndFlush(category);
         }).orElseThrow(() -> new IllegalArgumentException(NOT_FOUND.formatted(id)));
     }
-    
+
     private void deleteCategory(Long id, @NotNull Category category) {
         Iterable<Product> productsToUpdate = new HashSet<>(category.getProducts());
         productsToUpdate.forEach(product -> {

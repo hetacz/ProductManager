@@ -50,7 +50,7 @@ public class CategoryControler {
         Category category = repository.findById(id).orElseThrow();
         getCategoryWithProduct(id, category);
         URI location = getSimpleUri();
-        return getOkResponseBody(location, category);
+        return getFullOkResponse(location, category);
     }
 
     @GetMapping("/")
@@ -58,7 +58,9 @@ public class CategoryControler {
         List<Category> categories = repository.findAll(Sort.by(Sort.Direction.ASC, "id"));
         getAllCategories(categories);
         URI location = getSimpleUri();
-        return getOkResponseBody(location, categories);
+        return ResponseEntity.ok()
+                .location(location)
+                .body(categories.stream().map(Category::toFullString).toList().toString());
     }
 
     @PostMapping(value = "/", consumes = "application/json")
@@ -70,7 +72,7 @@ public class CategoryControler {
         Category category = service.addCategory(categoryDto);
         categoryCreated(category);
         URI location = getUriWithId(category);
-        return getCreatedResponseBody(location, category);
+        return ResponseEntity.created(location).body(category.toString());
     }
 
     @PostMapping(value = "/batch", consumes = "application/json")
@@ -84,7 +86,7 @@ public class CategoryControler {
         List<String> locations = categories.stream()
                 .map(category -> "/api/category/%d".formatted(category.getId()))
                 .toList();
-        return getCreateadResponseBody(locations);
+        return new ResponseEntity<>(locations.toString(), HttpStatus.CREATED);
     }
 
     @DeleteMapping("/{id}")
@@ -95,7 +97,7 @@ public class CategoryControler {
         service.deleteCategory(id);
         categoryDeleted(id);
         URI location = getSimpleUri();
-        return getResponseOK(id, location);
+        return ResponseEntity.ok().location(location).body(CATEGORY_ID_DELETED.formatted(id));
     }
 
     @DeleteMapping("/batch")
@@ -106,7 +108,7 @@ public class CategoryControler {
         List<Long> idsToDelete = repository.findAllByIdIn(ids).stream().map(Category::getId).toList();
         service.deleteCategories(idsToDelete);
         idsToDelete.forEach(this::categoryDeleted);
-        return getOKResponseBody(idsToDelete);
+        return ResponseEntity.ok().body(CATEGORIES_IDS_DELETED.formatted(idsToDelete));
     }
 
     // no validation of dto as invalid as not updated
@@ -118,33 +120,12 @@ public class CategoryControler {
         Category category = service.updateCategory(id, categoryDto);
         categoryUpdated(id, category);
         URI location = getSimpleUri();
-        return getOkResponseBody(location, category);
+        return getFullOkResponse(location, category);
     }
 
     @NotNull
-    private <T> ResponseEntity<String> getOkResponseBody(URI location, @NotNull T t) {
-        return ResponseEntity.ok().location(location).body(t.toString());
-    }
-
-    @NotNull
-    private ResponseEntity<String> getOKResponseBody(List<Long> idsToDelete) {
-        return ResponseEntity.ok().body(CATEGORIES_IDS_DELETED.formatted(idsToDelete));
-    }
-
-    @NotNull
-    private ResponseEntity<String> getResponseOK(Long id, URI location) {
-        return ResponseEntity.ok().location(location).body(CATEGORY_ID_DELETED.formatted(id));
-    }
-
-    @NotNull
-    private ResponseEntity<String> getCreatedResponseBody(URI location, @NotNull Category category) {
-        return ResponseEntity.created(location).body(category.toString());
-    }
-
-    @Contract("_ -> new")
-    @NotNull
-    private ResponseEntity<String> getCreateadResponseBody(@NotNull List<String> locations) {
-        return new ResponseEntity<>(locations.toString(), HttpStatus.CREATED);
+    private ResponseEntity<String> getFullOkResponse(URI location, @NotNull Category category) {
+        return ResponseEntity.ok().location(location).body(category.toFullString());
     }
 
     @NotNull

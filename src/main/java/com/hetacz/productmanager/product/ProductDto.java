@@ -15,4 +15,9 @@ public record ProductDto(@Size(min = 1) String name, @Size(min = 1) String descr
     public static @NotNull ProductDto of(String name, String description, Long price, List<String> categories) {
         return new ProductDto(name, description, price, categories);
     }
+
+    @Contract("_, _, _ -> new")
+    public static @NotNull ProductDto of(String name, String description, Long price) {
+        return new ProductDto(name, description, price, List.of("Other"));
+    }
 }

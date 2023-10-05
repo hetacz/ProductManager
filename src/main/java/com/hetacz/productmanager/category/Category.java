@@ -28,28 +28,30 @@ public class Category implements Serializable, Comparable<Category> {
     private String name;
 
     public Category(String name) {
-        super();
         this.name = name;
     }
 
     public Category(Long id, String name) {
-        super();
+        this(name);
         this.id = id;
-        this.name = name;
     }
 
     public void addProduct(Product product) {
-        this.products.add(product);
+        products.add(product);
         product.getCategories().add(this);
     }
 
     public void removeProduct(Product product) {
-        this.products.remove(product);
+        products.remove(product);
         product.getCategories().remove(this);
+    }
+
+    public String toFullString() {
+        return "Category{id=%d, name=%s, products=%s}".formatted(id, name, products);
     }
 
     @Override
     public int compareTo(@NotNull Category o) {
-        return this.name.compareTo(o.name);
+        return name.compareTo(o.name);
     }
 }

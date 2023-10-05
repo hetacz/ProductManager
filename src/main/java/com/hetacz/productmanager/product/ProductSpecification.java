@@ -20,7 +20,8 @@ public class ProductSpecification {
     }
 
     public Specification<Product> hasDescriptionLike(String description) {
-        return (root, query, builder) -> builder.like(builder.lower(root.get("description")), "%" + description.toLowerCase() + "%");
+        return (root, query, builder) -> builder.like(builder.lower(root.get("description")),
+                "%" + description.toLowerCase() + "%");
     }
 
     public Specification<Product> hasPriceGreaterOrEqualThan(Long min) {
